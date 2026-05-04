@@ -71,10 +71,16 @@ public static class HookPatches {
             CombatState.instance.damage.turns = combatState.RoundNumber;
         }
         MainFile.Logger.Info("turn started: " + CombatState.instance.damage.turns);
-
-        Patches.updatePanel();
     }
 
+    [HarmonyPatch(nameof(Hook.AfterTurnEnd))]
+    [HarmonyPostfix]
+    public static void TurnEnd(CombatSide side) {
+        if (side == CombatSide.Player) {
+            Patches.updatePanel();   
+        }
+    }
+    
     [HarmonyPatch(nameof(Hook.AfterDamageGiven))]
     [HarmonyPostfix]
     public static void AfterDamage(ICombatState combatState, Creature dealer, DamageResult results, Creature target, CardModel cardSource) {
@@ -105,8 +111,6 @@ public static class HookPatches {
                 CombatState.instance.addDirect(playerIdx, results.UnblockedDamage + results.BlockedDamage);
             }
         }
-
-        Patches.updatePanel();
     }
 }
 
