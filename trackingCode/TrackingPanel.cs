@@ -44,9 +44,21 @@ public static class TrackingPanel {
         rows.AddThemeConstantOverride("separation", 16);
         inner.AddChild(rows);
 
-        MainFile.Logger.Info("setting TrackingPanel.instance");
+        var header = new Label {
+            Text = "Combat",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            CustomMinimumSize = new Vector2(Row.ROW_SIZE, 32f)
+        };
+        header.AddThemeFontSizeOverride("font_size", 16);
+        header.AddThemeColorOverride("font_color", new("ffffffff"));    
+        rows.AddChild(header);
 
         return root;
+    }
+
+    public static void updateHeader(Node node, string text) {
+        ((Label)node.GetChild(0).GetChild(0).GetChild(0)).Text = text;
     }
 
     public static void updateWith(Node node, CombatDamage damage) {
@@ -59,6 +71,7 @@ public static class TrackingPanel {
         }
 
         var rows = root.GetChild(0).GetChild(0);
+        var children = rows.GetChildren();
         for (var i = 0; i < damage.damage.Length; i++) {
             var name = PlatformUtil.PrimaryPlatform == PlatformType.None ?
                 null
@@ -66,11 +79,13 @@ public static class TrackingPanel {
             if (name == null || name == players[i].NetId.ToString()) {
                 name = players[i].Character.Title.GetRawText();
             }
+            
+            var color = players[i].Character.NameColor;
 
-            var child = rows.GetChild(i);
+            var child = children.Count <= i+1 ? null : children[i+1];
             if (child == null) {
                 MainFile.Logger.Info("creating bar");
-                child = Row.create(name);
+                child = Row.create(name, color);
                 rows.AddChild(child);
             }
 
@@ -90,7 +105,6 @@ public static class Util {
             CustomMinimumSize = new Vector2(Row.ROW_LABEL_SIZE, 32f)
         };
         node.AddThemeFontSizeOverride("font_size", 14);
-        node.AddThemeColorOverride("font_color", new("ffffffff"));
         return node;
     }
 
@@ -136,7 +150,7 @@ public static class Util {
 public static class Row {
     public static float ROW_LABEL_SIZE = 192;
     public static float ROW_SIZE = ROW_LABEL_SIZE + Util.ROW_RECT_SIZE;
-    public static Node create(string name) {
+    public static Node create(string name, Color color) {
         var root = new HBoxContainer {
             ZIndex = 100,
             CustomMinimumSize = new(ROW_SIZE, 32f)
@@ -145,6 +159,8 @@ public static class Row {
 
         var nameL = Util.label(name);
         nameL.Size = new Vector2(32f, ROW_LABEL_SIZE);
+        nameL.AddThemeColorOverride("font_color", color);
+        
         var direct = Util.rect(new("607D8BFF"));
         var assist = Util.rect(new("009688FF"));
         var poison = Util.rect(new("4CAF50FF"));

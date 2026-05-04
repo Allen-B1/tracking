@@ -40,7 +40,7 @@ public static class Patches {
             return;
         }
 
-        TrackingPanel.updateWith(Patches.panel, CombatState.instance.damage);                
+        TrackingPanel.updateWith(Patches.panel, CombatState.instance.damage);
     }
 }
 
@@ -50,6 +50,10 @@ public static class HookPatches {
     [HarmonyPostfix]
     public static void BeforeCombat(IRunState runState, ICombatState? combatState) {
         Patches.run(() => {
+            if (combatState == null) {
+                return;
+            }
+
             if (Patches.panel == null) {
                 if (Engine.GetMainLoop() is SceneTree tree && tree.Root != null) {
                     Patches.panel = TrackingPanel.create(tree.Root);
@@ -58,7 +62,11 @@ public static class HookPatches {
             }
 
             CombatState.instance = new CombatState(runState.Players.Count);
-            Patches.updatePanel();
+
+            if (Patches.panel != null) {
+                TrackingPanel.updateHeader(Patches.panel, combatState.Encounter?.Title.GetRawText() ?? "Combat");
+                Patches.updatePanel();
+            }
         });
     }
 
