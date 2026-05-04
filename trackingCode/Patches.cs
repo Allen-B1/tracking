@@ -23,6 +23,8 @@ using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
 using MegaCrit.Sts2.Core.ValueProps;
 
+using ICombatState = MegaCrit.Sts2.Core.Combat.CombatState;
+
 namespace tracking.trackingCode;
 
 public static class Patches {
@@ -43,7 +45,7 @@ public static class Patches {
 public static class HookPatches {
     [HarmonyPatch(nameof(Hook.BeforeCombatStart))]
     [HarmonyPostfix]
-    public static void BeforeCombat(IRunState runState, CombatState? combatState) {
+    public static void BeforeCombat(IRunState runState, ICombatState? combatState) {
         if (combatState == null) {
             Log.Info("combatState is null");
             return;
