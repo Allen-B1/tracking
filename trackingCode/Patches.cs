@@ -43,7 +43,7 @@ public static class Patches {
 public static class HookPatches {
     [HarmonyPatch(nameof(Hook.BeforeCombatStart))]
     [HarmonyPostfix]
-    public static void BeforeCombat(IRunState runState, ICombatState? combatState) {
+    public static void BeforeCombat(IRunState runState, CombatState? combatState) {
         if (combatState == null) {
             Log.Info("combatState is null");
             return;
