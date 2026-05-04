@@ -1,8 +1,8 @@
 using Godot;
-using Godot.NativeInterop;
+using tracking.trackingCode;
 
 [GlobalClass]
-public partial class DragPanel : PanelContainer {
+public partial class DragPanel : SubViewportContainer {
     private bool _isDragging = false;
     private Vector2 _dragOffset;
 
