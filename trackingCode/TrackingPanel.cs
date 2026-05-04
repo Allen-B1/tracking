@@ -63,6 +63,10 @@ public static class TrackingPanel {
             var name = PlatformUtil.PrimaryPlatform == PlatformType.None ?
                 players[i].Character.Title.ToString()
                 : PlatformUtil.GetPlayerName(PlatformUtil.PrimaryPlatform, players[i].NetId);
+            if (name == null || name == players[i].NetId.ToString()) {
+                name = players[i].Character.Title.ToString();
+            }
+
             var child = rows.GetChild(i);
             if (child == null) {
                 MainFile.Logger.Info("creating bar");
