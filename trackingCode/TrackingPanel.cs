@@ -14,11 +14,11 @@ using MegaCrit.Sts2.Core.Runs;
 namespace tracking.trackingCode;
 
 public static class TrackingPanel {
-    public static AddedNode<NCombatRoom, Node> node = new((room) => {
-        MainFile.Logger.Debug("creating node");
-        var WIDTH = Row.ROW_SIZE + 32*2;
-        var root = new PanelContainer {
-            Position = new(room.Size.X - WIDTH, 96),
+    public static AddedNode<NCombatRoom, DragPanel> node = new((room) => {
+        MainFile.Logger.Info("creating node");
+/*        var WIDTH = Row.ROW_SIZE + 32*2;
+        var root = new DragPanel {
+            GlobalPosition = new(room.Size.X - WIDTH, 96),
             Size = new(0, 0),   
             ZIndex = 100,
         };
@@ -46,6 +46,10 @@ public static class TrackingPanel {
         MainFile.Logger.Info("setting TrackingPanel.instance");
         instance = root;
 
+        return root;*/
+
+        var root = new DragPanel();
+        MainFile.Logger.Info("creating node");
         return root;
     });
 
