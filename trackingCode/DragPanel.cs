@@ -7,12 +7,12 @@ public partial class DragPanel : PanelContainer {
 
     public override void _Input(InputEvent @event) {
         if (@event is InputEventMouseButton mouseEvent) {
-            if (!GetGlobalRect().HasPoint(mouseEvent.Position)) {
-                return;
-            }
-
             if (mouseEvent.ButtonIndex == MouseButton.Left) {
                 if (mouseEvent.Pressed) {
+                    if (!GetGlobalRect().HasPoint(mouseEvent.Position)) {
+                        return;
+                    }
+                    
                     _isDragging = true;
                     _dragOffset = GetGlobalMousePosition() - GlobalPosition;
                 } else {
