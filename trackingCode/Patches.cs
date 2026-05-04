@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Reflection.Metadata.Ecma335;
 using Godot;
 using HarmonyLib;
@@ -70,6 +71,29 @@ public static class TurnEndPatch {
     }
 }
 
+[HarmonyPatch(typeof(PowerModel), nameof(PowerModel.BeforeApplied))] 
+public static class BeforeApplyPowerPatch {
+    [HarmonyPostfix]
+    public static void Postfix(Creature applier, Creature target, PowerModel __instance) {
+        var player = applier == null ? null : applier.Player != null ? applier.Player : applier.PetOwner;
+        var state = player?.RunState;
+        if (state == null || CombatState.instance == null || target.CombatState == null) {
+            return;
+        }
+
+        var playerIdx = state.Players.IndexOf(player);
+        var enemyIdx = target.CombatState.Enemies.IndexOf(target);
+        if (playerIdx < 0 || enemyIdx < 0) {
+            return;
+        }
+
+        if (__instance is DoomPower) {
+            CombatState.instance.addDoom(playerIdx, enemyIdx, __instance.Amount);
+        } else if (__instance is PoisonPower) {
+            CombatState.instance.addPoison(playerIdx, enemyIdx, __instance.Amount);
+        }
+    }
+}
 
 [HarmonyPatch(typeof(Hook), nameof(Hook.AfterDamageGiven))]
 public static class AfterDamagePatch {
@@ -112,6 +136,29 @@ public sealed class AfterDoomPatch {
                 return;
             }
             cstate.tickDoom(enemyIdx, target.CurrentHp);
+        }
+    }
+}
+
+[HarmonyPatch(typeof(PoisonPower), nameof(PoisonPower.AfterSideTurnStart))]
+public static class AfterPoisonPatch {
+    [HarmonyPrefix]
+    public static void Prefix(CombatSide side, ICombatState combatState, PoisonPower __instance) {
+        if (side != __instance.Owner.Side || __instance.Owner.CombatState == null) {
+            return;
+        }
+
+        var enemy = __instance.Owner.CombatState.Enemies.IndexOf(__instance.Owner);
+        if (CombatState.instance == null || enemy < 0) {
+            return;
+        }
+
+
+        int triggerCount = (int)typeof(PoisonPower)
+            .GetField("TriggerCount", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(__instance)!;
+        for (var i = 0; i < triggerCount; i++) {
+            CombatState.instance.tickPoison(enemy, __instance.Amount > __instance.Owner.CurrentHp ? __instance.Owner.CurrentHp : __instance.Amount);
         }
     }
 }

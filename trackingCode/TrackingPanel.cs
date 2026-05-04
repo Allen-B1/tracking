@@ -15,12 +15,16 @@ public static class TrackingPanel {
         MainFile.Logger.Debug("creating node");
         var WIDTH = Row.ROW_SIZE + 32*2;
         var root = new PanelContainer {
-            Position = new(room.Size.X - WIDTH, 128),
+            Position = new(room.Size.X - WIDTH, 96),
             Size = new(0, 0),   
             ZIndex = 100,
         };
         root.AddThemeStyleboxOverride("panel", new StyleBoxFlat {
-            BgColor = new("111111FF")
+            BgColor = new("111111FF"),
+            CornerRadiusTopLeft = 8,
+            CornerRadiusTopRight = 8,
+            CornerRadiusBottomLeft = 8,
+            CornerRadiusBottomRight = 8
         });
 
         var inner = new MarginContainer {};
