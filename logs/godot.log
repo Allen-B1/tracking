@@ -1,0 +1,40 @@
+MegaDot v4.5.1.m.10.mono.custom_build - https://godotengine.org
+
+System.IO.FileNotFoundException: Could not load file or assembly 'sts2, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null'. The system cannot find the file specified.
+
+File name: 'sts2, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null'
+   at System.ModuleHandle.ResolveType(QCallModule module, Int32 typeToken, IntPtr* typeInstArgs, Int32 typeInstCount, IntPtr* methodInstArgs, Int32 methodInstCount, ObjectHandleOnStack type)
+   at System.ModuleHandle.ResolveTypeHandle(Int32 typeToken, RuntimeTypeHandle[] typeInstantiationContext, RuntimeTypeHandle[] methodInstantiationContext)
+   at System.Reflection.RuntimeModule.ResolveType(Int32 metadataToken, Type[] genericTypeArguments, Type[] genericMethodArguments)
+   at System.Reflection.CustomAttribute.FilterCustomAttributeRecord(MetadataToken caCtorToken, MetadataImport& scope, RuntimeModule decoratedModule, MetadataToken decoratedToken, RuntimeType attributeFilterType, Boolean mustBeInheritable, ListBuilder`1& derivedAttributes, RuntimeType& attributeType, IRuntimeMethodInfo& ctorWithParameters, Boolean& isVarArg)
+   at System.Reflection.CustomAttribute.AddCustomAttributes(ListBuilder`1& attributes, RuntimeModule decoratedModule, Int32 decoratedMetadataToken, RuntimeType attributeFilterType, Boolean mustBeInheritable, ListBuilder`1 derivedAttributes)
+   at System.Reflection.CustomAttribute.GetCustomAttributes(RuntimeModule decoratedModule, Int32 decoratedMetadataToken, Int32 pcaCount, RuntimeType attributeFilterType)
+   at System.Reflection.CustomAttribute.GetCustomAttributes(RuntimeType type, RuntimeType caType, Boolean inherit)
+   at Godot.Bridge.ScriptManagerBridge.<LookupScriptsInAssembly>g__LookupScriptForClass|13_0(Type type) in /build/modules/mono/glue/GodotSharp/GodotSharp/Core/Bridge/ScriptManagerBridge.cs:line 303
+   at Godot.Bridge.ScriptManagerBridge.LookupScriptsInAssembly(Assembly assembly) in /build/modules/mono/glue/GodotSharp/GodotSharp/Core/Bridge/ScriptManagerBridge.cs:line 354
+   at GodotPlugins.Main.LoadProjectAssembly(Char* nAssemblyPath, godot_string* outLoadedAssemblyPath) in /build/modules/mono/glue/GodotSharp/GodotPlugins/Main.cs:line 154
+[   0% ] [90m[1mfirst_scan_filesystem[22m | Started Project initialization (5 steps)[39m[0m
+[   0% ] [90m[1mfirst_scan_filesystem[22m | Scanning file structure...[39m[0m
+[  16% ] [90m[1mfirst_scan_filesystem[22m | Loading global class names...[39m[0m
+[  33% ] [90m[1mfirst_scan_filesystem[22m | Verifying GDExtensions...[39m[0m
+[  50% ] [90m[1mfirst_scan_filesystem[22m | Creating autoload scripts...[39m[0m
+[  66% ] [90m[1mfirst_scan_filesystem[22m | Initializing plugins...[39m[0m
+[  83% ] [90m[1mfirst_scan_filesystem[22m | Starting file scan...[39m[0m
+[92m[ DONE ][39m [1mfirst_scan_filesystem[22m
+[0m
+[   0% ] [90m[1msavepack[22m | Started Packing (102 steps)[39m[0m
+[   1% ] [90m[1msavepack[22m | Storing File: res://.godot/imported/mod_image.png-08747ed5f49c287223029d122f2d77e7.ctex[39m[0m
+[   1% ] [90m[1msavepack[22m | Storing File: res://tracking/mod_image.png.import[39m[0m
+[  17% ] [90m[1msavepack[22m | Storing File: res://trackingCode/DragPanel.cs[39m[0m
+[  33% ] [90m[1msavepack[22m | Storing File: res://trackingCode/MainFile.cs[39m[0m
+[  50% ] [90m[1msavepack[22m | Storing File: res://trackingCode/Patches.cs[39m[0m
+[  66% ] [90m[1msavepack[22m | Storing File: res://trackingCode/State.cs[39m[0m
+[  82% ] [90m[1msavepack[22m | Storing File: res://trackingCode/TrackingPanel.cs[39m[0m
+[  82% ] [90m[1msavepack[22m | Storing File: res://.godot/global_script_class_cache.cfg[39m[0m
+[  82% ] [90m[1msavepack[22m | Storing File: res://tracking/mod_image.png[39m[0m
+[  82% ] [90m[1msavepack[22m | Storing File: res://.godot/uid_cache.bin[39m[0m
+[  82% ] [90m[1msavepack[22m | Storing File: res://project.binary[39m[0m
+[92m[ DONE ][39m [1msavepack[22m
+[0m
+ERROR: Condition "!EditorSettings::get_singleton() || !EditorSettings::get_singleton()->has_setting(p_setting)" is true. Returning: Variant()
+   at: _EDITOR_GET (editor/settings/editor_settings.cpp:1514)
