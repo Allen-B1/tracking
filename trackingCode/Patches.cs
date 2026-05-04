@@ -28,16 +28,18 @@ using ICombatState = MegaCrit.Sts2.Core.Combat.CombatState;
 namespace tracking.trackingCode;
 
 public static class Patches {
-    public static void updatePanel() {
-        Callable.From(() => {
-            if (TrackingPanel.instance == null || CombatState.instance == null) {
-                return;
-            }
+    /** Run code in main thread */
+    public static void run(Action action) {
+        Callable.From(action).CallDeferred();
+    }
 
-            lock (CombatState.instance) {
-                TrackingPanel.updateWith(TrackingPanel.instance, CombatState.instance.damage);                
-            }
-        }).CallDeferred();
+    /** Must be run in main thread */    
+    public static void updatePanel() {
+        if (TrackingPanel.instance == null || CombatState.instance == null) {
+            return;
+        }
+
+        TrackingPanel.updateWith(TrackingPanel.instance, CombatState.instance.damage);                
     }
 }
 
@@ -46,39 +48,41 @@ public static class HookPatches {
     [HarmonyPatch(nameof(Hook.BeforeCombatStart))]
     [HarmonyPostfix]
     public static void BeforeCombat(IRunState runState, ICombatState? combatState) {
-        if (combatState == null) {
-            Log.Info("combatState is null");
-            return;
-        }
-
-        CombatState.instance = new CombatState(runState.Players.Count);
-        Patches.updatePanel();
+        Patches.run(() => {
+            CombatState.instance = new CombatState(runState.Players.Count);
+            Patches.updatePanel();
+        });
     }
 
     [HarmonyPatch(nameof(Hook.AfterCombatEnd))]
     [HarmonyPostfix]
     public static void AfterCombat() {
-        CombatState.instance = null;
+        Patches.run(() => {
+            CombatState.instance = null;        
+        });
     }
 
     [HarmonyPatch(nameof(Hook.AfterPlayerTurnStart))]
     [HarmonyPostfix]
     public static void TurnStart(ICombatState combatState) {
-        if (CombatState.instance == null) {
-            return;
-        }
+        int roundNumber = combatState.RoundNumber;
 
-        lock (CombatState.instance) {
-            CombatState.instance.damage.turns = combatState.RoundNumber;
-        }
-        MainFile.Logger.Info("turn started: " + CombatState.instance.damage.turns);
+        Patches.run(() => {
+            if (CombatState.instance == null) {
+                return;
+            }
+
+            CombatState.instance.damage.turns = roundNumber;
+        });
     }
 
     [HarmonyPatch(nameof(Hook.AfterTurnEnd))]
     [HarmonyPostfix]
     public static void TurnEnd(CombatSide side) {
         if (side == CombatSide.Player) {
-            Patches.updatePanel();   
+            Patches.run(() => {
+                Patches.updatePanel();               
+            });
         }
     }
     
@@ -96,11 +100,11 @@ public static class HookPatches {
             return;
         }
 
-        if (CombatState.instance == null) {
-            return;
-        }
+        Patches.run(() => {
+            if (CombatState.instance == null) {
+                return;
+            }
                 
-        lock (CombatState.instance) {
             if (cardSource != null && cardSource.Type == CardType.Attack) {
                 MainFile.Logger.Info("attack");
                 CombatState.instance.addAttack(playerIdx, target, results.UnblockedDamage + results.BlockedDamage,
@@ -110,8 +114,8 @@ public static class HookPatches {
             } else {
                 MainFile.Logger.Info("damage " + playerIdx + "," + enemyIdx + ": " + (results.UnblockedDamage + results.BlockedDamage));
                 CombatState.instance.addDirect(playerIdx, results.UnblockedDamage + results.BlockedDamage);
-            }
-        }
+            }            
+        });
     }
 }
 
@@ -130,7 +134,7 @@ public static class BeforeApplyPowerPatch {
             return;
         }
 
-        lock (CombatState.instance) {
+        Patches.run(() => {
             if (power is DoomPower) {
                 MainFile.Logger.Info("applying doom...");
                 CombatState.instance.addDoom(playerIdx, target, (int)amount);
@@ -143,7 +147,7 @@ public static class BeforeApplyPowerPatch {
             } else if (power is WeakPower) {
                 CombatState.instance.addWeak(playerIdx, target, (int)amount); 
             }
-        }
+        });
     }
 }
 
@@ -151,20 +155,19 @@ public static class BeforeApplyPowerPatch {
 public sealed class AfterDoomPatch {
     [HarmonyPrefix]
     public static void Prefix(IReadOnlyList<Creature> creatures) {
-        var cstate = CombatState.instance;
-        if (cstate == null) {
-            return;
-        }
-
         MainFile.Logger.Info("ticking doom...");
 
-        lock (cstate) {
-            foreach (var target in creatures) {
-                cstate.tickDoom(target, target.CurrentHp);
-            }            
-        }
+        Patches.run(() => {
+            if (CombatState.instance == null) {
+                return;
+            }
 
-        Patches.updatePanel();
+            foreach (var target in creatures) {
+                CombatState.instance.tickDoom(target, target.CurrentHp);
+            }
+
+            Patches.updatePanel();
+        });
     }
 }
 
@@ -172,21 +175,25 @@ public sealed class AfterDoomPatch {
 public static class AfterPoisonPatch {
     [HarmonyPrefix]
     public static void Prefix(CombatSide side, ICombatState combatState, PoisonPower __instance) {
-        if (side != __instance.Owner.Side || CombatState.instance == null) {
+        if (side != __instance.Owner.Side) {
             return;
         }
 
-        lock (CombatState.instance) {
-            int triggerCount = (int)typeof(PoisonPower)
-                .GetProperty("TriggerCount", BindingFlags.NonPublic | BindingFlags.Instance)!
-                .GetValue(__instance)!;
+        int triggerCount = (int)typeof(PoisonPower)
+            .GetProperty("TriggerCount", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(__instance)!;
+        Patches.run(() => {
+            if (CombatState.instance == null) {
+                return;
+            }
+
             MainFile.Logger.Info("ticking poison " + triggerCount + " times...");
             for (var i = 0; i < triggerCount; i++) {
                 CombatState.instance.tickPoison(__instance.Owner, __instance.Amount > __instance.Owner.CurrentHp ? __instance.Owner.CurrentHp : __instance.Amount);
             }   
-        }
 
-        Patches.updatePanel();
+            Patches.updatePanel();            
+        });
     }
 }
 
@@ -195,25 +202,24 @@ public static class StatusPatch {
     [HarmonyPatch(typeof(VulnerablePower), nameof(VulnerablePower.AfterTurnEnd))]
     [HarmonyPrefix]
     public static void TickVuln(VulnerablePower __instance, CombatSide side) {
-        if (side != CombatSide.Enemy || CombatState.instance == null || !__instance.Owner.IsEnemy) {
+        if (side != CombatSide.Enemy || !__instance.Owner.IsEnemy) {
             return;
         }
 
-        lock (CombatState.instance) {
-            CombatState.instance.tickVuln(__instance.Owner); 
-        }
+        Patches.run(() => {
+            CombatState.instance?.tickVuln(__instance.Owner);             
+        });
     }
 
     [HarmonyPatch(typeof(WeakPower), nameof(WeakPower.AfterTurnEnd))]
     [HarmonyPrefix]
     public static void TickWeak(WeakPower __instance, CombatSide side) {
-        if (side != CombatSide.Enemy || CombatState.instance == null || !__instance.Owner.IsEnemy) {
+        if (side != CombatSide.Enemy || !__instance.Owner.IsEnemy) {
             return;
         }
 
-        lock (CombatState.instance) {
-            CombatState.instance.tickWeak(__instance.Owner);        
-        }
+        Patches.run(() => {
+            CombatState.instance?.tickWeak(__instance.Owner);        
+        });
     }
-
 }
