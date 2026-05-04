@@ -1,6 +1,4 @@
 
-using BaseLib.Patches.Features;
-using BaseLib.Utils;
 using Godot;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models.Cards;
@@ -14,11 +12,13 @@ using MegaCrit.Sts2.Core.Runs;
 namespace tracking.trackingCode;
 
 public static class TrackingPanel {
-    public static AddedNode<NCombatRoom, DragPanel> node = new((room) => {
+    public static Node? create(Node parent) {
         MainFile.Logger.Info("creating node");
+
+
         var WIDTH = Row.ROW_SIZE + 32*2;
         var root = new DragPanel {
-            GlobalPosition = new(room.Size.X - WIDTH, 96),
+            GlobalPosition = new(parent.GetViewport().GetVisibleRect().Size.X - WIDTH - 16, 96),
             Size = new(0, 0),   
             ZIndex = 100,
         };
@@ -45,10 +45,9 @@ public static class TrackingPanel {
         inner.AddChild(rows);
 
         MainFile.Logger.Info("setting TrackingPanel.instance");
-        instance = root;
 
         return root;
-    });
+    }
 
     public static void updateWith(Node node, CombatDamage damage) {
         Control root = (Control)node;
@@ -78,8 +77,6 @@ public static class TrackingPanel {
             Row.set(child, damage.damage[i], damage.total, damage.turns);
         }
     }
-
-    public static Node? instance;
 }
 
 public static class Util {

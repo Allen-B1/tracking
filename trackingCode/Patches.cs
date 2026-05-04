@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Reflection.Metadata.Ecma335;
-using BaseLib.Extensions;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
@@ -28,6 +27,8 @@ using ICombatState = MegaCrit.Sts2.Core.Combat.CombatState;
 namespace tracking.trackingCode;
 
 public static class Patches {
+    public static Node? panel;
+
     /** Run code in main thread */
     public static void run(Action action) {
         Callable.From(action).CallDeferred();
@@ -35,11 +36,11 @@ public static class Patches {
 
     /** Must be run in main thread */    
     public static void updatePanel() {
-        if (TrackingPanel.instance == null || CombatState.instance == null) {
+        if (Patches.panel == null || CombatState.instance == null) {
             return;
         }
 
-        TrackingPanel.updateWith(TrackingPanel.instance, CombatState.instance.damage);                
+        TrackingPanel.updateWith(Patches.panel, CombatState.instance.damage);                
     }
 }
 
@@ -49,6 +50,13 @@ public static class HookPatches {
     [HarmonyPostfix]
     public static void BeforeCombat(IRunState runState, ICombatState? combatState) {
         Patches.run(() => {
+            if (Patches.panel == null) {
+                if (Engine.GetMainLoop() is SceneTree tree && tree.Root != null) {
+                    Patches.panel = TrackingPanel.create(tree.Root);
+                    tree.Root.AddChild(Patches.panel);
+                }
+            }
+
             CombatState.instance = new CombatState(runState.Players.Count);
             Patches.updatePanel();
         });

@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Runtime;
 using System.Security.Cryptography.X509Certificates;
-using BaseLib.Patches.Content;
 using Godot;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
