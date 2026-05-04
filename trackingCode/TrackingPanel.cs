@@ -22,8 +22,9 @@ public static class TrackingPanel {
             Size = new(0, 0),   
             ZIndex = 100,
         };
+
         root.AddThemeStyleboxOverride("panel", new StyleBoxFlat {
-            BgColor = new("111111FF"),
+            BgColor = new("111111aa"),
             CornerRadiusTopLeft = 8,
             CornerRadiusTopRight = 8,
             CornerRadiusBottomLeft = 8,

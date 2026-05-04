@@ -1,13 +1,16 @@
 using Godot;
-using tracking.trackingCode;
 
 [GlobalClass]
-public partial class DragPanel : SubViewportContainer {
+public partial class DragPanel : PanelContainer {
     private bool _isDragging = false;
     private Vector2 _dragOffset;
 
-    public override void _GuiInput(InputEvent @event) {
+    public override void _Input(InputEvent @event) {
         if (@event is InputEventMouseButton mouseEvent) {
+            if (!GetGlobalRect().HasPoint(mouseEvent.Position)) {
+                return;
+            }
+
             if (mouseEvent.ButtonIndex == MouseButton.Left) {
                 if (mouseEvent.Pressed) {
                     _isDragging = true;

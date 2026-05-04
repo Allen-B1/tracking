@@ -52,6 +52,7 @@ public static class HookPatches {
         }
 
         CombatState.instance = new CombatState(runState.Players.Count);
+        Patches.updatePanel();
     }
 
     [HarmonyPatch(nameof(Hook.AfterCombatEnd))]
