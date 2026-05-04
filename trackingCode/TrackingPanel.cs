@@ -172,10 +172,10 @@ public static class Row {
         Util.setRectText(poison, damage.poison == 0 ? "" : ((double)damage.poison / turns).ToString("F1"));
         Util.setRectText(doom  , damage.doom   == 0 ? "" : ((double)damage.doom   / turns).ToString("F1"));
 
-        Util.setRectSize(direct, (float)damage.direct / total);
-        Util.setRectSize(assist, (float)damage.assist / total);
-        Util.setRectSize(poison, (float)damage.poison / total);
-        Util.setRectSize(doom  , (float)damage.doom   / total);
+        Util.setRectSize(direct, total == 0 ? 0 : (float)damage.direct / total);
+        Util.setRectSize(assist, total == 0 ? 0 : (float)damage.assist / total);
+        Util.setRectSize(poison, total == 0 ? 0 : (float)damage.poison / total);
+        Util.setRectSize(doom  , total == 0 ? 0 : (float)damage.doom   / total);
 
         ((HBoxContainer)root).QueueSort();
     }
