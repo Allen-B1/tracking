@@ -20,11 +20,25 @@ using MegaCrit.Sts2.Core.ValueProps;
 
 namespace tracking.trackingCode;
 
-[HarmonyPatch(typeof(Hook), nameof(Hook.BeforeCombatStart))]
+public static class Patches {
+    public static void updatePanel() {
+        Callable.From(() => {
+            if (TrackingPanel.instance == null || CombatState.instance == null) {
+                return;
+            }
 
-public static class BeforeCombatPatch {
+            lock (CombatState.instance) {
+                TrackingPanel.updateWith(TrackingPanel.instance, CombatState.instance.damage);                
+            }
+        }).CallDeferred();
+    }
+}
+
+[HarmonyPatch(typeof(Hook))]
+public static class HookPatches {
+    [HarmonyPatch(nameof(Hook.BeforeCombatStart))]
     [HarmonyPostfix]
-    public static void Postfix(IRunState runState, ICombatState? combatState) {
+    public static void BeforeCombat(IRunState runState, ICombatState? combatState) {
         if (combatState == null) {
             Log.Info("combatState is null");
             return;
@@ -32,24 +46,16 @@ public static class BeforeCombatPatch {
 
         CombatState.instance = new CombatState(runState.Players.Count);
     }
-}
 
-[HarmonyPatch(typeof(Hook), nameof(Hook.AfterCombatEnd))]
-
-public static class AfterCombatPatch {
+    [HarmonyPatch(nameof(Hook.AfterCombatEnd))]
     [HarmonyPostfix]
-    public static void Postfix() {
+    public static void AfterCombat() {
         CombatState.instance = null;
-
-        // TODO: add CombatState.instance to RunState.instance
     }
-}
 
-[HarmonyPatch(typeof(Hook), nameof(Hook.AfterPlayerTurnStart))]
-
-public static class TurnStartPatch {
+    [HarmonyPatch(nameof(Hook.AfterPlayerTurnStart))]
     [HarmonyPostfix]
-    public static void Postfix() {
+    public static void TurnStart() {
         if (CombatState.instance == null) {
             return;
         }
@@ -57,6 +63,35 @@ public static class TurnStartPatch {
         lock (CombatState.instance) {
             CombatState.instance.damage.turns += 1;            
         }
+
+        Patches.updatePanel();
+    }
+
+    [HarmonyPatch(nameof(Hook.AfterDamageGiven))]
+    [HarmonyPostfix]
+    public static void AfterDamage(ICombatState combatState, Creature dealer, DamageResult results, Creature target) {
+        var player = dealer == null ? null : dealer.Player != null ? dealer.Player : dealer.PetOwner;
+        var state = player?.RunState;
+        if (state == null) {
+            return;
+        }
+        var playerIdx = state.Players.IndexOf(player);
+        var enemyIdx = combatState.Enemies.IndexOf(target);
+        if (playerIdx < 0 || enemyIdx < 0) {
+            return;
+        }
+
+        MainFile.Logger.Info("damage " + playerIdx + "," + enemyIdx + ": " + (results.UnblockedDamage + results.BlockedDamage));
+
+        if (CombatState.instance == null) {
+            return;
+        }
+
+        lock (CombatState.instance) {
+            CombatState.instance.addDirect(playerIdx, results.UnblockedDamage + results.BlockedDamage);
+        }
+
+        Patches.updatePanel();
     }
 }
 
@@ -87,36 +122,6 @@ public static class BeforeApplyPowerPatch {
     }
 }
 
-[HarmonyPatch(typeof(Hook), nameof(Hook.AfterDamageGiven))]
-public static class AfterDamagePatch {
-    [HarmonyPostfix]
-    public static void Postfix(ICombatState combatState, Creature dealer, DamageResult results, Creature target) {
-        var player = dealer == null ? null : dealer.Player != null ? dealer.Player : dealer.PetOwner;
-        var state = player?.RunState;
-        if (state == null) {
-            return;
-        }
-        var playerIdx = state.Players.IndexOf(player);
-        var enemyIdx = combatState.Enemies.IndexOf(target);
-        if (playerIdx < 0 || enemyIdx < 0) {
-            return;
-        }
-
-        MainFile.Logger.Info("damage " + playerIdx + "," + enemyIdx + ": " + (results.UnblockedDamage + results.BlockedDamage));
-
-        if (CombatState.instance == null) {
-            return;
-        }
-
-        lock (CombatState.instance) {
-            CombatState.instance.addDirect(playerIdx, results.UnblockedDamage + results.BlockedDamage);
-        }
-
-        TrackingPanel.update();
-    }
-}
-
-
 [HarmonyPatch(typeof(DoomPower), nameof(DoomPower.DoomKill))]
 public sealed class AfterDoomPatch {
     [HarmonyPrefix]
@@ -133,7 +138,8 @@ public sealed class AfterDoomPatch {
                 cstate.tickDoom(target, target.CurrentHp);
             }            
         }
-        TrackingPanel.update();
+
+        Patches.updatePanel();
     }
 }
 
@@ -155,6 +161,6 @@ public static class AfterPoisonPatch {
             }   
         }
 
-        TrackingPanel.update();
+        Patches.updatePanel();
     }
 }

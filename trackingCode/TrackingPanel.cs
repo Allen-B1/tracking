@@ -72,18 +72,6 @@ public static class TrackingPanel {
     }
 
     public static Node? instance;
-
-    public static void update() {
-        Callable.From(() => {
-            if (TrackingPanel.instance == null || CombatState.instance == null) {
-                return;
-            }
-
-            lock (CombatState.instance) {
-                TrackingPanel.updateWith(TrackingPanel.instance, CombatState.instance.damage);                
-            }
-        }).CallDeferred();
-    }
 }
 
 public static class Util {
