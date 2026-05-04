@@ -17,6 +17,8 @@ using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Multiplayer.Transport.ENet;
+using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Platform.Null;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
@@ -41,6 +43,22 @@ public static class Patches {
         }
 
         TrackingPanel.updateWith(Patches.panel, CombatState.instance.damage);
+    }
+}
+
+[HarmonyPatch(typeof(NGame), nameof(NGame.LoadMainMenu))]
+public static class LoadMainMenuPatch {
+    public static void Postfix() {
+        Patches.run(() => {
+            if (Patches.panel != null) {
+                Patches.panel.QueueFree();
+                Patches.panel = null;
+            }
+
+            if (CombatState.instance != null) {
+                CombatState.instance = null;
+            }
+        });
     }
 }
 
@@ -74,6 +92,7 @@ public static class HookPatches {
     [HarmonyPostfix]
     public static void AfterCombat() {
         Patches.run(() => {
+            Patches.updatePanel();            
             CombatState.instance = null;        
         });
     }
