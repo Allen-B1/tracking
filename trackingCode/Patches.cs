@@ -30,7 +30,7 @@ public static class BeforeCombatPatch {
             return;
         }
 
-        CombatState.instance = new CombatState(runState.Players.Count, combatState.Enemies.Count);
+        CombatState.instance = new CombatState(runState.Players.Count);
     }
 }
 
@@ -54,19 +54,8 @@ public static class TurnStartPatch {
             return;
         }
 
-        CombatState.instance.damage.turns += 1;
-    }
-}
-[HarmonyPatch(typeof(Hook), nameof(Hook.AfterTurnEnd))]
-public static class TurnEndPatch {
-    [HarmonyPostfix]
-    public static void Postfix() {
-        if (CombatState.instance == null) {
-            return;
-        }
-        if (TrackingPanel.instance != null) {
-            MainFile.Logger.Info("updating panel, total = " + CombatState.instance.damage.total);
-            TrackingPanel.update(TrackingPanel.instance, CombatState.instance.damage);
+        lock (CombatState.instance) {
+            CombatState.instance.damage.turns += 1;            
         }
     }
 }
@@ -74,7 +63,7 @@ public static class TurnEndPatch {
 [HarmonyPatch(typeof(PowerModel), nameof(PowerModel.BeforeApplied))] 
 public static class BeforeApplyPowerPatch {
     [HarmonyPostfix]
-    public static void Postfix(Creature applier, Creature target, PowerModel __instance) {
+    public static void Postfix(Creature applier, decimal amount, Creature target, PowerModel __instance) {
         var player = applier == null ? null : applier.Player != null ? applier.Player : applier.PetOwner;
         var state = player?.RunState;
         if (state == null || CombatState.instance == null || target.CombatState == null) {
@@ -82,15 +71,18 @@ public static class BeforeApplyPowerPatch {
         }
 
         var playerIdx = state.Players.IndexOf(player);
-        var enemyIdx = target.CombatState.Enemies.IndexOf(target);
-        if (playerIdx < 0 || enemyIdx < 0) {
+        if (playerIdx < 0) {
             return;
         }
 
-        if (__instance is DoomPower) {
-            CombatState.instance.addDoom(playerIdx, enemyIdx, __instance.Amount);
-        } else if (__instance is PoisonPower) {
-            CombatState.instance.addPoison(playerIdx, enemyIdx, __instance.Amount);
+        lock (CombatState.instance) {
+            if (__instance is DoomPower) {
+                MainFile.Logger.Info("applying doom...");
+                CombatState.instance.addDoom(playerIdx, target, (int)amount);
+            } else if (__instance is PoisonPower) {
+                MainFile.Logger.Info("applying poison...");
+                CombatState.instance.addPoison(playerIdx, target, (int)amount);
+            }            
         }
     }
 }
@@ -115,8 +107,12 @@ public static class AfterDamagePatch {
         if (CombatState.instance == null) {
             return;
         }
-        CombatState cstate = CombatState.instance;
-        cstate.addDirect(playerIdx, results.UnblockedDamage + results.BlockedDamage);
+
+        lock (CombatState.instance) {
+            CombatState.instance.addDirect(playerIdx, results.UnblockedDamage + results.BlockedDamage);
+        }
+
+        TrackingPanel.update();
     }
 }
 
@@ -125,18 +121,19 @@ public static class AfterDamagePatch {
 public sealed class AfterDoomPatch {
     [HarmonyPrefix]
     public static void Prefix(IReadOnlyList<Creature> creatures) {
-        foreach (var target in creatures) {
-            var enemyIdx = target.CombatState == null ? -1 : target.CombatState.Enemies.IndexOf(target);
-            if (enemyIdx < 0) {
-                return;
-            }
-
-            CombatState? cstate = CombatState.instance;
-            if (cstate == null) {
-                return;
-            }
-            cstate.tickDoom(enemyIdx, target.CurrentHp);
+        var cstate = CombatState.instance;
+        if (cstate == null) {
+            return;
         }
+
+        MainFile.Logger.Info("ticking doom...");
+
+        lock (cstate) {
+            foreach (var target in creatures) {
+                cstate.tickDoom(target, target.CurrentHp);
+            }            
+        }
+        TrackingPanel.update();
     }
 }
 
@@ -144,21 +141,20 @@ public sealed class AfterDoomPatch {
 public static class AfterPoisonPatch {
     [HarmonyPrefix]
     public static void Prefix(CombatSide side, ICombatState combatState, PoisonPower __instance) {
-        if (side != __instance.Owner.Side || __instance.Owner.CombatState == null) {
+        if (side != __instance.Owner.Side || CombatState.instance == null) {
             return;
         }
 
-        var enemy = __instance.Owner.CombatState.Enemies.IndexOf(__instance.Owner);
-        if (CombatState.instance == null || enemy < 0) {
-            return;
+        lock (CombatState.instance) {
+            int triggerCount = (int)typeof(PoisonPower)
+                .GetProperty("TriggerCount", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .GetValue(__instance)!;
+            MainFile.Logger.Info("ticking poison " + triggerCount + " times...");
+            for (var i = 0; i < triggerCount; i++) {
+                CombatState.instance.tickPoison(__instance.Owner, __instance.Amount > __instance.Owner.CurrentHp ? __instance.Owner.CurrentHp : __instance.Amount);
+            }   
         }
 
-
-        int triggerCount = (int)typeof(PoisonPower)
-            .GetField("TriggerCount", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .GetValue(__instance)!;
-        for (var i = 0; i < triggerCount; i++) {
-            CombatState.instance.tickPoison(enemy, __instance.Amount > __instance.Owner.CurrentHp ? __instance.Owner.CurrentHp : __instance.Amount);
-        }
+        TrackingPanel.update();
     }
 }

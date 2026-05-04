@@ -2,10 +2,12 @@
 using BaseLib.Patches.Features;
 using BaseLib.Utils;
 using Godot;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Events;
 using MegaCrit.Sts2.Core.Nodes.Cards;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Platform;
 using MegaCrit.Sts2.Core.Runs;
 
 namespace tracking.trackingCode;
@@ -46,7 +48,7 @@ public static class TrackingPanel {
         return root;
     });
 
-    public static void update(Node node, CombatDamage damage) {
+    public static void updateWith(Node node, CombatDamage damage) {
         Control root = (Control)node;
 
         var players = RunManager.Instance.DebugOnlyGetState()?.Players;
@@ -57,10 +59,11 @@ public static class TrackingPanel {
 
         var rows = root.GetChild(0).GetChild(0);
         for (var i = 0; i < damage.damage.Length; i++) {
+            var name = PlatformUtil.GetPlayerName(PlatformUtil.PrimaryPlatform, players[i].NetId);
             var child = rows.GetChild(i);
             if (child == null) {
                 MainFile.Logger.Info("creating bar");
-                child = Row.create("You");
+                child = Row.create(name);
                 rows.AddChild(child);
             }
 
@@ -69,6 +72,18 @@ public static class TrackingPanel {
     }
 
     public static Node? instance;
+
+    public static void update() {
+        Callable.From(() => {
+            if (TrackingPanel.instance == null || CombatState.instance == null) {
+                return;
+            }
+
+            lock (CombatState.instance) {
+                TrackingPanel.updateWith(TrackingPanel.instance, CombatState.instance.damage);                
+            }
+        }).CallDeferred();
+    }
 }
 
 public static class Util {
@@ -115,7 +130,12 @@ public static class Util {
     }
 
     public static void setRectSize(Node rect, float size) {
-        ((PanelContainer)rect).CustomMinimumSize = new Vector2(size*ROW_RECT_SIZE, 32f);
+        if (size == 0) {
+            ((PanelContainer)rect).Visible = false;            
+        } else {
+            ((PanelContainer)rect).CustomMinimumSize = new Vector2(size*ROW_RECT_SIZE, 32f);
+            ((PanelContainer)rect).Visible = true;
+        }
     }
 }
 
@@ -147,13 +167,15 @@ public static class Row {
         var poison = root.GetChild(2);
         var doom =   root.GetChild(3);
 
-        Util.setRectText(direct, damage.direct == 0 ? "" : (damage.direct / turns) + "");
-        Util.setRectText(poison, damage.poison == 0 ? "" : (damage.poison / turns) + "");
-        Util.setRectText(doom  , damage.doom   == 0 ? "" : (damage.doom / turns)   + "");
+        Util.setRectText(direct, damage.direct == 0 ? "" : ((double)damage.direct / turns).ToString("F1"));
+        Util.setRectText(poison, damage.poison == 0 ? "" : ((double)damage.poison / turns).ToString("F1"));
+        Util.setRectText(doom  , damage.doom   == 0 ? "" : ((double)damage.doom   / turns).ToString("F1"));
 
-        Util.setRectSize(direct, damage.direct / total);
-        Util.setRectSize(poison, damage.poison / total);
-        Util.setRectSize(doom  , damage.doom   / total);
+        Util.setRectSize(direct, (float)damage.direct / total);
+        Util.setRectSize(poison, (float)damage.poison / total);
+        Util.setRectSize(doom  , (float)damage.doom   / total);
+
+        MainFile.Logger.Info("poison = " + damage.poison + " | total = " + total);
 
         ((HBoxContainer)root).QueueSort();
     }
