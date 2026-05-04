@@ -101,7 +101,8 @@ public static class Util {
     public static Node rect(Color color) {
         var root = new PanelContainer {
             CustomMinimumSize = new Vector2(0f, 32f),
-            SizeFlagsHorizontal = 0
+            SizeFlagsHorizontal = 0,
+            Visible = false
         };
         root.AddThemeStyleboxOverride("panel", new StyleBoxFlat {
             BgColor = color
@@ -109,7 +110,6 @@ public static class Util {
 
         var node = new Label {
             Text = "",
-            Visible = false,
             ZIndex = 101,
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Center
