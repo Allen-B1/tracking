@@ -1,8 +1,11 @@
 using System.Reflection;
 using System.Reflection.Metadata.Ecma335;
+using BaseLib.Extensions;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Commands.Builders;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Extensions;
@@ -13,6 +16,8 @@ using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.Models.Relics;
+using MegaCrit.Sts2.Core.Multiplayer.Transport.ENet;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
@@ -55,24 +60,25 @@ public static class HookPatches {
 
     [HarmonyPatch(nameof(Hook.AfterPlayerTurnStart))]
     [HarmonyPostfix]
-    public static void TurnStart() {
+    public static void TurnStart(ICombatState combatState) {
         if (CombatState.instance == null) {
             return;
         }
 
         lock (CombatState.instance) {
-            CombatState.instance.damage.turns += 1;            
+            CombatState.instance.damage.turns = combatState.RoundNumber;
         }
+        MainFile.Logger.Info("turn started: " + CombatState.instance.damage.turns);
 
         Patches.updatePanel();
     }
 
     [HarmonyPatch(nameof(Hook.AfterDamageGiven))]
     [HarmonyPostfix]
-    public static void AfterDamage(ICombatState combatState, Creature dealer, DamageResult results, Creature target) {
+    public static void AfterDamage(ICombatState combatState, Creature dealer, DamageResult results, Creature target, CardModel cardSource) {
         var player = dealer == null ? null : dealer.Player != null ? dealer.Player : dealer.PetOwner;
         var state = player?.RunState;
-        if (state == null) {
+        if (state == null || player == null) {
             return;
         }
         var playerIdx = state.Players.IndexOf(player);
@@ -81,24 +87,31 @@ public static class HookPatches {
             return;
         }
 
-        MainFile.Logger.Info("damage " + playerIdx + "," + enemyIdx + ": " + (results.UnblockedDamage + results.BlockedDamage));
-
         if (CombatState.instance == null) {
             return;
         }
-
+                
         lock (CombatState.instance) {
-            CombatState.instance.addDirect(playerIdx, results.UnblockedDamage + results.BlockedDamage);
+            if (cardSource != null && cardSource.Type == CardType.Attack) {
+                MainFile.Logger.Info("attack");
+                CombatState.instance.addAttack(playerIdx, target, results.UnblockedDamage + results.BlockedDamage,
+                    player.GetRelic<PaperPhrog>() != null, 
+                    player.Creature.GetPower<CrueltyPower>() != null ? player.Creature.GetPower<CrueltyPower>()!.Amount : 0,
+                    player.Creature.GetPower<TrackingPower>() != null ? player.Creature.GetPower<TrackingPower>()!.Amount : 0);
+            } else {
+                MainFile.Logger.Info("damage " + playerIdx + "," + enemyIdx + ": " + (results.UnblockedDamage + results.BlockedDamage));
+                CombatState.instance.addDirect(playerIdx, results.UnblockedDamage + results.BlockedDamage);
+            }
         }
 
         Patches.updatePanel();
     }
 }
 
-[HarmonyPatch(typeof(PowerModel), nameof(PowerModel.BeforeApplied))] 
+[HarmonyPatch(typeof(Hook), nameof(Hook.BeforePowerAmountChanged))] 
 public static class BeforeApplyPowerPatch {
-    [HarmonyPostfix]
-    public static void Postfix(Creature applier, decimal amount, Creature target, PowerModel __instance) {
+    [HarmonyPrefix]
+    public static void Prefix(Creature? applier, decimal amount, Creature target, PowerModel power) {
         var player = applier == null ? null : applier.Player != null ? applier.Player : applier.PetOwner;
         var state = player?.RunState;
         if (state == null || CombatState.instance == null || target.CombatState == null) {
@@ -111,13 +124,18 @@ public static class BeforeApplyPowerPatch {
         }
 
         lock (CombatState.instance) {
-            if (__instance is DoomPower) {
+            if (power is DoomPower) {
                 MainFile.Logger.Info("applying doom...");
                 CombatState.instance.addDoom(playerIdx, target, (int)amount);
-            } else if (__instance is PoisonPower) {
-                MainFile.Logger.Info("applying poison...");
+            } else if (power is PoisonPower) {
+                MainFile.Logger.Info("applying poison: " + amount);
                 CombatState.instance.addPoison(playerIdx, target, (int)amount);
-            }            
+            } else if (power is VulnerablePower) {
+                MainFile.Logger.Info("applying vuln: " + amount);
+                CombatState.instance.addVuln(playerIdx, target, (int)amount);
+            } else if (power is WeakPower) {
+                CombatState.instance.addWeak(playerIdx, target, (int)amount); 
+            }
         }
     }
 }
@@ -163,4 +181,32 @@ public static class AfterPoisonPatch {
 
         Patches.updatePanel();
     }
+}
+
+[HarmonyPatch]
+public static class StatusPatch {
+    [HarmonyPatch(typeof(VulnerablePower), nameof(VulnerablePower.AfterTurnEnd))]
+    [HarmonyPrefix]
+    public static void TickVuln(VulnerablePower __instance, CombatSide side) {
+        if (side != CombatSide.Enemy || CombatState.instance == null || !__instance.Owner.IsEnemy) {
+            return;
+        }
+
+        lock (CombatState.instance) {
+            CombatState.instance.tickVuln(__instance.Owner); 
+        }
+    }
+
+    [HarmonyPatch(typeof(WeakPower), nameof(WeakPower.AfterTurnEnd))]
+    [HarmonyPrefix]
+    public static void TickWeak(WeakPower __instance, CombatSide side) {
+        if (side != CombatSide.Enemy || CombatState.instance == null || !__instance.Owner.IsEnemy) {
+            return;
+        }
+
+        lock (CombatState.instance) {
+            CombatState.instance.tickWeak(__instance.Owner);        
+        }
+    }
+
 }

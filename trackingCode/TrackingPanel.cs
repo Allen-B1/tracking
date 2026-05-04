@@ -8,6 +8,7 @@ using MegaCrit.Sts2.Core.Models.Events;
 using MegaCrit.Sts2.Core.Nodes.Cards;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Platform;
+using MegaCrit.Sts2.Core.Platform.Null;
 using MegaCrit.Sts2.Core.Runs;
 
 namespace tracking.trackingCode;
@@ -59,7 +60,9 @@ public static class TrackingPanel {
 
         var rows = root.GetChild(0).GetChild(0);
         for (var i = 0; i < damage.damage.Length; i++) {
-            var name = PlatformUtil.GetPlayerName(PlatformUtil.PrimaryPlatform, players[i].NetId);
+            var name = PlatformUtil.PrimaryPlatform == PlatformType.None ?
+                players[i].Character.Title.ToString()
+                : PlatformUtil.GetPlayerName(PlatformUtil.PrimaryPlatform, players[i].NetId);
             var child = rows.GetChild(i);
             if (child == null) {
                 MainFile.Logger.Info("creating bar");
@@ -133,17 +136,20 @@ public static class Row {
     public static Node create(string name) {
         var root = new HBoxContainer {
             ZIndex = 100,
+            CustomMinimumSize = new(ROW_SIZE, 32f)
         };
         root.AddThemeConstantOverride("separation", 0);
 
         var nameL = Util.label(name);
         nameL.Size = new Vector2(32f, ROW_LABEL_SIZE);
         var direct = Util.rect(new("607D8BFF"));
+        var assist = Util.rect(new("009688FF"));
         var poison = Util.rect(new("4CAF50FF"));
         var doom = Util.rect(new("9C27B0FF"));
 
         root.AddChild(nameL);
         root.AddChild(direct);
+        root.AddChild(assist);
         root.AddChild(poison);
         root.AddChild(doom);
 
@@ -152,18 +158,19 @@ public static class Row {
 
     public static void set(Node root, PlayerDamage damage, int total, int turns) {
         var direct = root.GetChild(1);
-        var poison = root.GetChild(2);
-        var doom =   root.GetChild(3);
+        var assist = root.GetChild(2);
+        var poison = root.GetChild(3);
+        var doom =   root.GetChild(4);
 
         Util.setRectText(direct, damage.direct == 0 ? "" : ((double)damage.direct / turns).ToString("F1"));
+        Util.setRectText(assist, damage.assist == 0 ? "" : ((double)damage.assist / turns).ToString("F1"));
         Util.setRectText(poison, damage.poison == 0 ? "" : ((double)damage.poison / turns).ToString("F1"));
         Util.setRectText(doom  , damage.doom   == 0 ? "" : ((double)damage.doom   / turns).ToString("F1"));
 
         Util.setRectSize(direct, (float)damage.direct / total);
+        Util.setRectSize(assist, (float)damage.assist / total);
         Util.setRectSize(poison, (float)damage.poison / total);
         Util.setRectSize(doom  , (float)damage.doom   / total);
-
-        MainFile.Logger.Info("poison = " + damage.poison + " | total = " + total);
 
         ((HBoxContainer)root).QueueSort();
     }
