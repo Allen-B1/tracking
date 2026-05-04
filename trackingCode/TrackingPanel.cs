@@ -61,10 +61,10 @@ public static class TrackingPanel {
         var rows = root.GetChild(0).GetChild(0);
         for (var i = 0; i < damage.damage.Length; i++) {
             var name = PlatformUtil.PrimaryPlatform == PlatformType.None ?
-                players[i].Character.Title.ToString()
+                null
                 : PlatformUtil.GetPlayerName(PlatformUtil.PrimaryPlatform, players[i].NetId);
             if (name == null || name == players[i].NetId.ToString()) {
-                name = players[i].Character.Title.ToString();
+                name = players[i].Character.Title.GetRawText();
             }
 
             var child = rows.GetChild(i);
@@ -108,7 +108,8 @@ public static class Util {
         });
 
         var node = new Label {
-            Text = "0",
+            Text = "",
+            Visible = false,
             ZIndex = 101,
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Center
