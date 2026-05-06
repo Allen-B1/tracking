@@ -75,7 +75,6 @@ public static class HookPatches {
             if (Patches.panel == null) {
                 if (Engine.GetMainLoop() is SceneTree tree && tree.Root != null) {
                     Patches.panel = TrackingPanel.create(tree.Root);
-                    tree.Root.AddChild(Patches.panel);
                 }
             }
 
@@ -92,7 +91,7 @@ public static class HookPatches {
     [HarmonyPostfix]
     public static void AfterCombat() {
         Patches.run(() => {
-            Patches.updatePanel();            
+            Patches.updatePanel();
             CombatState.instance = null;        
         });
     }

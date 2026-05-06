@@ -15,13 +15,13 @@ public static class TrackingPanel {
     public static Node? create(Node parent) {
         MainFile.Logger.Info("creating node");
 
-
         var WIDTH = Row.ROW_SIZE + 32*2;
         var root = new DragPanel {
             GlobalPosition = new(parent.GetViewport().GetVisibleRect().Size.X - WIDTH - 16, 96),
             Size = new(0, 0),   
             ZIndex = 100,
         };
+        parent.AddChild(root);
 
         root.AddThemeStyleboxOverride("panel", new StyleBoxFlat {
             BgColor = new("111111ff"),
