@@ -81,7 +81,8 @@ public static class HookPatches {
             CombatState.instance = new CombatState(runState.Players.Count);
 
             if (Patches.panel != null) {
-                TrackingPanel.updateHeader(Patches.panel, combatState.Encounter?.Title.GetRawText() ?? "Combat");
+                TrackingPanel.updateHeader(Patches.panel, 
+                    (combatState.Encounter?.Title.GetRawText() ?? "Combat") + " (Turn " + combatState.RoundNumber + ")");
                 Patches.updatePanel();
             }
         });
