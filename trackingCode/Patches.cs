@@ -233,7 +233,7 @@ public static class AfterPoisonPatch {
 
 [HarmonyPatch]
 public static class StatusPatch {
-    [HarmonyPatch(typeof(VulnerablePower), nameof(VulnerablePower.AfterTurnEnd))]
+    [HarmonyPatch(typeof(VulnerablePower), nameof(VulnerablePower.AfterSideTurnEnd))]
     [HarmonyPrefix]
     public static void TickVuln(VulnerablePower __instance, CombatSide side) {
         if (side != CombatSide.Enemy || !__instance.Owner.IsEnemy) {
@@ -245,7 +245,7 @@ public static class StatusPatch {
         });
     }
 
-    [HarmonyPatch(typeof(WeakPower), nameof(WeakPower.AfterTurnEnd))]
+    [HarmonyPatch(typeof(WeakPower), nameof(WeakPower.AfterSideTurnEnd))]
     [HarmonyPrefix]
     public static void TickWeak(WeakPower __instance, CombatSide side) {
         if (side != CombatSide.Enemy || !__instance.Owner.IsEnemy) {

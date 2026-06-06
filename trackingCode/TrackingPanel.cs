@@ -88,8 +88,15 @@ public static class TrackingPanel {
                 child = Row.create(name, color);
                 rows.AddChild(child);
             }
-
-            Row.set(child, damage.damage[i], damage.total, damage.turns);
+            
+            var max = 0;
+            foreach (PlayerDamage playerDamage in damage.damage) {
+                var playerTotal = playerDamage.total();
+                if (playerTotal >= max) {
+                    max = playerTotal;
+                }
+            }
+            Row.set(child, damage.damage[i], max, damage.turns);
         }
     }
 }
@@ -175,7 +182,7 @@ public static class Row {
         return root;
     }
 
-    public static void set(Node root, PlayerDamage damage, int total, int turns) {
+    public static void set(Node root, PlayerDamage damage, int max, int turns) {
         var direct = root.GetChild(1);
         var assist = root.GetChild(2);
         var poison = root.GetChild(3);
@@ -186,10 +193,10 @@ public static class Row {
         Util.setRectText(poison, damage.poison == 0 ? "" : ((double)damage.poison / turns).ToString("F1"));
         Util.setRectText(doom  , damage.doom   == 0 ? "" : ((double)damage.doom   / turns).ToString("F1"));
 
-        Util.setRectSize(direct, total == 0 ? 0 : (float)damage.direct / total);
-        Util.setRectSize(assist, total == 0 ? 0 : (float)damage.assist / total);
-        Util.setRectSize(poison, total == 0 ? 0 : (float)damage.poison / total);
-        Util.setRectSize(doom  , total == 0 ? 0 : (float)damage.doom   / total);
+        Util.setRectSize(direct, max == 0 ? 0 : (float)damage.direct / max);
+        Util.setRectSize(assist, max == 0 ? 0 : (float)damage.assist / max);
+        Util.setRectSize(poison, max == 0 ? 0 : (float)damage.poison / max);
+        Util.setRectSize(doom  , max == 0 ? 0 : (float)damage.doom   / max);
 
         ((HBoxContainer)root).QueueSort();
     }

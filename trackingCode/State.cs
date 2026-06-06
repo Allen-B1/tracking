@@ -199,4 +199,8 @@ public struct PlayerDamage {
     public int assist;
     public int doom;
     public int poison;
+
+    public int total() {
+        return direct + assist + doom + poison;
+    }
 }
